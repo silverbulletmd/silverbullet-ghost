@@ -1,0 +1,16 @@
+{
+  "name": "silverbullet-ghost",
+  "version": "0.0.1",
+  "author": "Zef Hemel",
+  "scripts": {
+    "build": "plugos-bundle --exclude yaml handlebars -- ghost.plug.yaml",
+    "start": "plugos-bundle -w --exclude yaml handlebars -- ghost.plug.yaml"
+  },
+  "dependencies": {
+    "@silverbulletmd/plugos-silverbullet-syscall": "^0.0.14",
+    "@silverbulletmd/plugs": "^0.0.14"
+  },
+  "devDependencies": {
+    "@plugos/plugos": "^0.0.14"
+  }
+}
