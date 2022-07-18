@@ -1,12 +1,13 @@
-import { readPage } from "@silverbulletmd/plugos-silverbullet-syscall/space";
+import { readSettings } from "@silverbulletmd/plugs/lib/settings_page";
+import { readSecrets } from "@silverbulletmd/plugs/lib/secrets_page";
 import { invokeFunction } from "@silverbulletmd/plugos-silverbullet-syscall/system";
 import {
+  flashNotification,
   getCurrentPage,
   getText,
 } from "@silverbulletmd/plugos-silverbullet-syscall/editor";
 import { cleanMarkdown } from "@silverbulletmd/plugs/markdown/util";
-import { parseMarkdown } from "@silverbulletmd/plugos-silverbullet-syscall/markdown";
-import { extractMeta } from "@silverbulletmd/plugs/query/data";
+import { GhostAdmin } from "./ghost_api";
 
 type GhostConfig = {
   url: string;
@@ -15,7 +16,7 @@ type GhostConfig = {
   pagePrefix: string;
 };
 
-type Post = {
+export type Post = {
   id: string;
   uuid: string;
   title: string;
@@ -39,7 +40,7 @@ type Tag = {
   description: string | null;
 };
 
-type MobileDoc = {
+export type MobileDoc = {
   version: string;
   atoms: any[];
   cards: Card[];
@@ -68,109 +69,6 @@ function markdownToMobileDoc(text: string): string {
   });
 }
 
-class GhostAdmin {
-  private token?: string;
-
-  constructor(private url: string, private key: string) {}
-
-  async init() {
-    const [id, secret] = this.key.split(":");
-
-    this.token = await self.syscall(
-      "jwt.jwt",
-      secret,
-      id,
-      "HS256",
-      "5m",
-      "/v3/admin/"
-    );
-  }
-
-  async listPosts(): Promise<Post[]> {
-    let result = await fetch(
-      `${this.url}/ghost/api/v3/admin/posts?order=published_at+DESC`,
-      {
-        headers: {
-          Authorization: `Ghost ${this.token}`,
-        },
-      }
-    );
-
-    return (await result.json()).posts;
-  }
-
-  async listMarkdownPosts(): Promise<Post[]> {
-    let markdownPosts: Post[] = [];
-    for (let post of await this.listPosts()) {
-      let mobileDoc = JSON.parse(post.mobiledoc) as MobileDoc;
-      if (mobileDoc.cards.length > 0 && mobileDoc.cards[0][0] === "markdown") {
-        markdownPosts.push(post);
-      }
-    }
-    return markdownPosts;
-  }
-
-  publishPost(post: Partial<Post>): Promise<any> {
-    return this.publish("posts", post);
-  }
-
-  publishPage(post: Partial<Post>): Promise<any> {
-    return this.publish("pages", post);
-  }
-
-  async publish(what: "pages" | "posts", post: Partial<Post>): Promise<any> {
-    let oldPostQueryR = await fetch(
-      `${this.url}/ghost/api/v3/admin/${what}/slug/${post.slug}`,
-      {
-        headers: {
-          Authorization: `Ghost ${this.token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    let oldPostQuery = await oldPostQueryR.json();
-    if (!oldPostQuery[what]) {
-      // New!
-      if (!post.status) {
-        post.status = "draft";
-      }
-      let result = await fetch(`${this.url}/ghost/api/v3/admin/${what}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Ghost ${this.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          [what]: [post],
-        }),
-      });
-      return (await result.json())[what][0];
-    } else {
-      let oldPost: Post = oldPostQuery[what][0];
-      post.updated_at = oldPost.updated_at;
-      let result = await fetch(
-        `${this.url}/ghost/api/v3/admin/${what}/${oldPost.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Ghost ${this.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            [what]: [post],
-          }),
-        }
-      );
-      return (await result.json())[what][0];
-    }
-  }
-}
-
-function postToMarkdown(post: Post): string {
-  let text = mobileDocToMarkdown(post.mobiledoc);
-  return `# ${post.title}\n${text}`;
-}
-
 const postRegex = /#\s*([^\n]+)\n([^$]+)$/;
 
 async function markdownToPost(text: string): Promise<Partial<Post>> {
@@ -186,22 +84,48 @@ async function markdownToPost(text: string): Promise<Partial<Post>> {
 }
 
 async function getConfig(): Promise<GhostConfig> {
-  let { text } = await readPage("ghost-config");
-  let parsedContent = await parseMarkdown(text);
-  let pageMeta = await extractMeta(parsedContent);
-  return pageMeta as GhostConfig;
+  let {
+    ghostUrl: url,
+    ghostPostPrefix: postPrefix,
+    ghostPagePrefix: pagePrefix,
+  } = await readSettings({
+    ghostUrl: "",
+    ghostPostPrefix: "ghost/post",
+    ghostPagePrefix: "ghost/page",
+  });
+  let [adminKey] = await readSecrets(["ghostAdminKey"]);
+  return {
+    url,
+    pagePrefix,
+    postPrefix,
+    adminKey,
+  };
 }
 
 export async function publishCommand() {
-  await invokeFunction(
+  let config = await getConfig();
+  let pageName = await getCurrentPage();
+  if(pageName.startsWith(config.pagePrefix)) {
+    await flashNotification("Publishing page to Ghost...");
+  } else if(pageName.startsWith(config.postPrefix)) {
+    await flashNotification("Publishing post to Ghost...");
+  } else {
+    await flashNotification("Page is not in either the page or post prefix", "error");
+    return;
+  }
+  if(await invokeFunction(
     "server",
     "publish",
-    await getCurrentPage(),
+    pageName,
     await getText()
-  );
+  )) {
+    await flashNotification("Publish successful!");
+  } else {
+    await flashNotification("Publish failed!");
+  }
 }
 
-export async function publish(name: string, text: string) {
+export async function publish(name: string, text: string): Promise<boolean> {
   let config = await getConfig();
   let admin = new GhostAdmin(config.url, config.adminKey);
   await admin.init();
@@ -209,12 +133,11 @@ export async function publish(name: string, text: string) {
   if (name.startsWith(config.postPrefix)) {
     post.slug = name.substring(config.postPrefix.length + 1);
     await admin.publishPost(post);
-    console.log("Done!");
+    return true;
   } else if (name.startsWith(config.pagePrefix)) {
     post.slug = name.substring(config.pagePrefix.length + 1);
     await admin.publishPage(post);
-    console.log("Done!");
-  } else {
-    console.error("Not in either the post or page prefix");
+    return true;
   }
+  return false;
 }

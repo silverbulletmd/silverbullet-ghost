@@ -2,13 +2,18 @@
 
 Note: Still very basic, to use:
 
-Create a page `ghost-config` in your space with the following configuration:
+In your `SETTINGS` specify the following settings:
 
-        ```meta
-        url: https://your-ghost-blog.ghost.io
-        adminKey: your:adminkey
-        postPrefix: posts
-        pagePrefix: pages
+        ```yaml
+        ghostUrl: https://your-ghost-blog.ghost.io
+        ghostPostPrefix: posts
+        ghostPagePrefix: pages
+        ```
+
+And in your `SECRETS` file:
+
+        ```yaml
+        ghostAdminKey: your:adminkey
         ```
 
 This will assume the naming pattern of `posts/my-post-slug` where the first top-level heading (`# Hello`) will be used as the post title.
