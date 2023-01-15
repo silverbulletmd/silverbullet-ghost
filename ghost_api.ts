@@ -1,21 +1,38 @@
-import { Post, MobileDoc } from "./ghost";
+import type { MobileDoc, Post } from "./ghost.ts";
 
+import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
+
+const fromHexString = (hexString: string) =>
+  Uint8Array.from(
+    hexString.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+  );
 export class GhostAdmin {
   private token?: string;
 
-  constructor(private url: string, private key: string) { }
+  constructor(private url: string, private key: string) {}
 
   async init() {
     const [id, secret] = this.key.split(":");
 
-    this.token = await self.syscall(
-      "jwt.jwt",
-      secret,
-      id,
-      "HS256",
-      "5m",
-      "/v3/admin/"
+    const key = await crypto.subtle.importKey(
+      "raw",
+      fromHexString(
+        secret,
+      ),
+      { name: "HMAC", hash: "SHA-256" },
+      true,
+      ["sign", "verify"],
     );
+
+    this.token = await create({
+      alg: "HS256",
+      kid: id,
+      typ: "JWT",
+    }, {
+      exp: getNumericDate(5 * 60),
+      iat: getNumericDate(0),
+      aud: "/v3/admin/",
+    }, key);
   }
 
   async listPosts(): Promise<Post[]> {
@@ -25,7 +42,7 @@ export class GhostAdmin {
         headers: {
           Authorization: `Ghost ${this.token}`,
         },
-      }
+      },
     );
 
     return (await result.json()).posts;
@@ -58,7 +75,7 @@ export class GhostAdmin {
           Authorization: `Ghost ${this.token}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
     let oldPostQuery = await oldPostQueryR.json();
     if (!oldPostQuery[what]) {
@@ -91,7 +108,7 @@ export class GhostAdmin {
           body: JSON.stringify({
             [what]: [post],
           }),
-        }
+        },
       );
       return (await result.json())[what][0];
     }

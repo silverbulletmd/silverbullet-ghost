@@ -1,9 +1,9 @@
 name: ghost
+imports:
+  - https://get.silverbullet.md/global.plug.json
 functions:
-  publishCommand:
-    path: "./ghost.ts:publishCommand"
-    command:
-      name: "Ghost: Publish"
   publish:
     path: "./ghost.ts:publish"
     env: server
+    events:
+      - share:ghost

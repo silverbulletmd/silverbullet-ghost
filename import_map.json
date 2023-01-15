@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "$sb/": "https://deno.land/x/silverbullet@0.2.7/plug-api/",
+    "$sb-plugs/": "https://deno.land/x/silverbullet@0.2.7/plugs/",
+    "yaml": "https://deno.land/std/encoding/yaml.ts"
+  }
+}
