@@ -65,7 +65,7 @@ function markdownToMobileDoc(text: string): string {
   });
 }
 
-const postRegex = /#\s*([^\n]+)\n([^$]+)$/;
+const postRegex = /#\s*([^\n]+)\n(([^\n]|\n)+)$/;
 
 async function markdownToPost(text: string): Promise<Partial<Post>> {
   const match = postRegex.exec(text);
