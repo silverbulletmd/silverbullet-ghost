@@ -1,6 +1,6 @@
 name: ghost
-imports:
-  - https://get.silverbullet.md/global.plug.json
+requiredPermissions:
+  - fetch
 functions:
   publish:
     path: "./ghost.ts:publish"
