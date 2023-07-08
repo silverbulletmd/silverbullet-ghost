@@ -4,6 +4,5 @@ requiredPermissions:
 functions:
   publish:
     path: "./ghost.ts:publish"
-    env: server
     events:
       - share:ghost
