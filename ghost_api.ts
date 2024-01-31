@@ -1,6 +1,13 @@
-import type { MobileDoc, Post } from "./ghost.ts";
+import "$sb/lib/fetch.ts";
+import { mime } from "https://deno.land/x/mimetypes@v1.0.0/mod.ts";
+import type { Post } from "./ghost.ts";
 
 import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
+
+export type Image = {
+  ref: string;
+  url: string;
+};
 
 const fromHexString = (hexString: string) =>
   Uint8Array.from(
@@ -36,8 +43,8 @@ export class GhostAdmin {
   }
 
   async listPosts(): Promise<Post[]> {
-    let result = await fetch(
-      `${this.url}/ghost/api/v3/admin/posts?order=published_at+DESC`,
+    const result = await fetch(
+      `${this.url}/ghost/api/v3/admin/posts?include=lexical&order=published_at+DESC`,
       {
         headers: {
           Authorization: `Ghost ${this.token}`,
@@ -48,15 +55,28 @@ export class GhostAdmin {
     return (await result.json()).posts;
   }
 
-  async listMarkdownPosts(): Promise<Post[]> {
-    let markdownPosts: Post[] = [];
-    for (let post of await this.listPosts()) {
-      let mobileDoc = JSON.parse(post.mobiledoc) as MobileDoc;
-      if (mobileDoc.cards.length > 0 && mobileDoc.cards[0][0] === "markdown") {
-        markdownPosts.push(post);
-      }
-    }
-    return markdownPosts;
+  async uploadImage(filename: string, data: Uint8Array): Promise<any> {
+    const contentType = mime.getType(filename);
+    const blob = new Blob([data], { type: contentType });
+
+    // Create FormData and append the Blob
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+    formData.append("ref", filename);
+
+    // Use fetch to send the request
+    const result = await nativeFetch(
+      `${this.url}/ghost/api/v3/admin/images/upload`,
+      {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Ghost ${this.token}`,
+        },
+      },
+    );
+
+    return result.json();
   }
 
   publishPost(post: Partial<Post>): Promise<any> {
@@ -68,7 +88,7 @@ export class GhostAdmin {
   }
 
   async publish(what: "pages" | "posts", post: Partial<Post>): Promise<any> {
-    let oldPostQueryR = await fetch(
+    const oldPostQueryR = await fetch(
       `${this.url}/ghost/api/v3/admin/${what}/slug/${post.slug}`,
       {
         headers: {

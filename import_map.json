@@ -1,7 +1,6 @@
 {
   "imports": {
     "$sb/": "../silverbullet/plug-api/",
-    "$sb-plugs/": "https://deno.land/x/silverbullet@0.2.13/plugs/",
-    "yaml": "https://deno.land/std@0.184.0/yaml/mod.ts"
+    "$sb-plugs/": "https://deno.land/x/silverbullet@0.5.7/plugs/"
   }
 }

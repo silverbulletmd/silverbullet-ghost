@@ -2,6 +2,10 @@ name: ghost
 requiredPermissions:
   - fetch
 functions:
+  publishPage:
+    path: ghost.ts:publishPage
+    command:
+      name: "Ghost: Publish"
   publish:
     path: "./ghost.ts:publish"
     events:
