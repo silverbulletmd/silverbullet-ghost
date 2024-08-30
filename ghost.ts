@@ -1,15 +1,18 @@
-import { readSetting } from "$sb/lib/settings_page.ts";
 import { readSecret } from "$sb/lib/secrets_page.ts";
-import { editor, markdown, space } from "$sb/silverbullet-syscall/mod.ts";
+import {
+  editor,
+  markdown,
+  space,
+  system,
+} from "@silverbulletmd/silverbullet/syscalls";
 import { cleanMarkdown } from "$sb-plugs/markdown/util.ts";
 import { GhostAdmin } from "./ghost_api.ts";
-import type { PublishEvent } from "$sb/app_event.ts";
-import { filterBox } from "$sb/silverbullet-syscall/editor.ts";
+import type { PublishEvent } from "@silverbulletmd/silverbullet/types";
 import {
   extractFrontmatter,
   prepareFrontmatterDispatch,
-} from "$sb/lib/frontmatter.ts";
-import { ParseTree } from "$sb/lib/tree.ts";
+} from "@silverbulletmd/silverbullet/lib/frontmatter";
+import { ParseTree } from "@silverbulletmd/silverbullet/lib/tree";
 
 type GhostInstanceConfig = {
   url: string;
@@ -89,7 +92,7 @@ async function markdownToPost(text: string): Promise<Partial<Post>> {
 }
 
 async function getConfig(): Promise<GhostConfig> {
-  const config = await readSetting("ghost") as GhostConfig;
+  const config = await system.getSpaceConfig("ghost") as GhostConfig;
   const secret = await readSecret("ghost") as Record<string, string>; // instance to admin key
   // Slot in secrets with the configs
   for (const [name, def] of Object.entries(config)) {
@@ -121,7 +124,7 @@ export async function publish(event: PublishEvent): Promise<boolean> {
 async function selectInstance(): Promise<string | undefined> {
   const config = await getConfig();
   const choices = Object.keys(config);
-  const choice = await filterBox(
+  const choice = await editor.filterBox(
     "Select Ghost instance",
     choices.map((c) => ({ name: c })),
   );
@@ -132,7 +135,7 @@ async function selectInstance(): Promise<string | undefined> {
 }
 
 async function selectPublishType(): Promise<"post" | "page" | undefined> {
-  const choice = await filterBox("Select publish type", [
+  const choice = await editor.filterBox("Select publish type", [
     { name: "post" },
     { name: "page" },
   ]);

@@ -1,4 +1,4 @@
-import "$sb/lib/fetch.ts";
+import "$sb/lib/native_fetch.ts";
 import { mime } from "https://deno.land/x/mimetypes@v1.0.0/mod.ts";
 import type { Post } from "./ghost.ts";
 
@@ -43,7 +43,7 @@ export class GhostAdmin {
   }
 
   async listPosts(): Promise<Post[]> {
-    const result = await fetch(
+    const result = await nativeFetch(
       `${this.url}/ghost/api/v3/admin/posts?include=lexical&order=published_at+DESC`,
       {
         headers: {
