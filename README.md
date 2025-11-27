@@ -1,5 +1,7 @@
 # Ghost plug for Silver Bullet
 
+**IMPORTANT UPDATE:** This plug is now deprecated in favor of this library: https://github.com/zefhemel/silverbullet-libraries/blob/main/Ghost.md
+
 This allows you to publish your pages as [Ghost](https://ghost.org/) pages or posts. I use it to publish [Zef+](https://zef.plus).
 
 ## Configuration
